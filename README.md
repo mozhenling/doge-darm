@@ -2,7 +2,7 @@
 
 The repository contains the experiment implementations of the manuscript entitled
 _"Distance Aware Risk Minimization for Domain Generalization in Machine Fault Diagnosis"_, 
-which are currently under a peer review process.
+which is currently under a peer review process.
 
 ## Run the codes
 The repository is developed from the 
