@@ -17,16 +17,29 @@ import shlex
 import hashlib
 import json
 import os
-
+from oututils import os_utils
 import shutil
 
-def plain_launcher(args_list):
+def plain_launcher(args_list, sweep_start_time, sweep_args):
     """Launch training via train function"""
-    print('start plain_launcher')
+    is_time_out = False
     for i, args in enumerate(args_list):
-        print(f'About to launch job #{i + 1}')
-        train(args)
-        print(f'Job #{i + 1} was completed' + f' ({len(args_list) - i - 1} jobs left)')
+        print(f'About to launch job #{i+1}')
+        is_time_out = train(args, sweep_start_time, is_time_out, sweep_args)
+        if is_time_out:
+            print(f'Job #{i+1} was incomplete due to time out!')
+            print(f'({len(args_list) - i} jobs incomplete in total)')
+            break
+        else:
+            print(f'Job #{i + 1} was completed' + f' ({len(args_list) - i - 1} jobs left)')
+
+    # os.makedirs(sweep_args.zip_output_dir, exist_ok=True)
+    if is_time_out:
+        output_name = os.path.join(sweep_args.zip_output_dir, f'0-time_out_sweeps')
+        os_utils.tozip(output_name, sweep_args.output_dir)
+    else:
+        output_name = os.path.join(sweep_args.zip_output_dir, '0-job_out_sweeps')
+        os_utils.tozip(output_name, sweep_args.output_dir)
 
 def local_launcher(commands):
     """Launch commands serially on the local machine."""
@@ -125,7 +138,7 @@ class Job:
             job_info)
 
     @staticmethod
-    def launch(jobs, launcher_fn, is_cmd_launcher = False):
+    def launch(jobs, launcher_fn, sweep_start_time, is_cmd_launcher, sweep_args):
         print('Launching...')
         jobs = jobs.copy()
         np.random.shuffle(jobs)
@@ -137,8 +150,8 @@ class Job:
             launcher_fn(commands)
         else:
             args_list = [job.train_args for job in jobs]
-            launcher_fn(args_list)
-        print(f'Launched {len(jobs)} jobs!')
+            launcher_fn(args_list, sweep_start_time, sweep_args)
+        print(f'Tried {len(jobs)} jobs!')
 
     @staticmethod
     def delete(jobs):
@@ -185,6 +198,9 @@ def make_args_list(n_trials, dataset_names, algorithms, n_hparams_from, n_hparam
                         train_args['aug_num'] = aug_num
                         train_args['skip_model_save'] = skip_model_save
                         train_args['trial_seed'] = trial_seed
+                        train_args['n_trials'] = n_trials
+                        train_args['datasets'] = dataset_names
+                        train_args['n_hparams'] = n_hparams
                         train_args['seed'] = data_process.seed_hash(dataset, algorithm, test_envs, hparams_seed, trial_seed)
                         if steps is not None:
                             train_args['steps'] = steps

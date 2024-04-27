@@ -17,8 +17,12 @@ def get_args():
                         help='networks for featurizer and classifier')
     parser.add_argument('--aug_num', type=int, default=0)
 
-    parser.add_argument('--output_dir', type=str, default=r'.\outputs\sweep_outs')
-    parser.add_argument('--data_dir', type=str, default=r'.\datasets')
+    parser.add_argument('--output_dir', type=str, default=r'./outputs/sweep_outs')
+    parser.add_argument('--zip_output_time', type=float, default=42900,
+                        help='the time (in seconds) to stop training and zip the output. Default: 11h55m')
+    parser.add_argument('--zip_output_dir', type=str, default=r'./0-zips')
+
+    parser.add_argument('--data_dir', type=str, default=r'./datasets')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--n_trials', type=int, default=3)
     parser.add_argument('--n_hparams', type=int, default=20)

@@ -1,6 +1,16 @@
 import sys
 import numpy as np
+import shutil
+
 #--------------------------------------------- Print results
+def tozip(output_name, dir_to_zip):
+    """
+    e.g.
+    OUTPUT_NAME ='0-FIRMseg_Prostate_sweep_seed0' or a directory
+    DIRECTORY_TO_ZIP = r'./outputs'
+    """
+    shutil.make_archive(output_name, 'zip', dir_to_zip)
+
 def print_separator():
     print("="*80)
 

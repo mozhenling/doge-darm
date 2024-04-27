@@ -9,25 +9,16 @@ if __name__ == "__main__":
 
     ###########################################################################
     # ---------------------------- test
-    # -- delete
-    # args.command = 'c'
-    # args.command_launcher= 'plain'
-    # args.n_trails = 1
-    # args.n_hparams = 1
-    # args.datasets = ['CWRU_Bearing']
-    # args.data_dir = './datasets'
-    # args.algorithms = ['DARM']
-    # args.skip_model_save = True
-
-    # -- launch
-    # args.command = 'r'
-    # args.command_launcher= 'plain'
-    # args.n_trails = 1
-    # args.n_hparams = 1
-    # args.datasets = ['CWRU_Bearing']
-    # args.data_dir = './datasets'
-    # args.algorithms = ['DARM']
-    # args.skip_model_save = True
+    # -- run
+    args.command = 'r'
+    args.command_launcher= 'plain'
+    args.n_trails = 1
+    args.n_hparams = 1
+    args.datasets = ['CU_Actuator']
+    args.data_dir = './datasets'
+    args.algorithms = ['DARM']
+    args.skip_model_save = True
+    args.zip_output_time = 10 # seconds
 
     ###########################################################################
 
@@ -59,15 +50,19 @@ if __name__ == "__main__":
         len([j for j in jobs if j.state == alg_launchers.Job.NOT_LAUNCHED]))
     )
 
-    if args.command in ['r','run','launch']:
-        to_launch = [j for j in jobs if j.state == alg_launchers.Job.NOT_LAUNCHED]
+    if args.command in ['r', 'run', 'launch']:
+        to_delete = [j for j in jobs if j.state == alg_launchers.Job.INCOMPLETE]
+        if len(to_delete) > 0:
+            print(f'About to delete {len(to_delete)} incomplete jobs to restart them.')
+            alg_launchers.Job.delete(to_delete)
+        to_launch = [j for j in jobs if j.state == alg_launchers.Job.NOT_LAUNCHED] + to_delete
         print(f'About to launch {len(to_launch)} jobs.')
         if not args.skip_confirmation:
             alg_launchers.ask_for_confirmation()
         launcher_fn = alg_launchers.REGISTRY[args.command_launcher]
-        alg_launchers.Job.launch(to_launch, launcher_fn, is_cmd_launcher)
+        alg_launchers.Job.launch(to_launch, launcher_fn, sweep_start_time, is_cmd_launcher, args)
 
-    elif args.command in ['c', 'clear','delete_incomplete']:
+    elif args.command in ['c', 'clear', 'delete_incomplete']:
         to_delete = [j for j in jobs if j.state == alg_launchers.Job.INCOMPLETE]
         print(f'About to delete {len(to_delete)} jobs.')
         if not args.skip_confirmation:
@@ -75,4 +70,4 @@ if __name__ == "__main__":
         alg_launchers.Job.delete(to_delete)
 
     sweep_stop_time = time.time()
-    print('#'*10, ' total_time = ', str((sweep_stop_time - sweep_start_time) / 60), ' min ', '#'*10)
+    print('#' * 10, ' total_time = {:.2f} min '.format((sweep_stop_time - sweep_start_time) / 60), '#' * 10)

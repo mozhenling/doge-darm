@@ -18,7 +18,7 @@ from params.seedutils import seed_everything_update
 #------------------------------------------------------------ Main
 ########################################################################################################################
 #------------------------------------------------------------ re-set imporatant params for each algorithm (for runs of no commind lines)
-def train(args_dict):
+def train(args_dict, sweep_start_time, is_time_out, sweep_args):
     # ------------------------------------------------------------ Versions of your packages
     print("Versions:")
     print("\tPython: {}".format(sys.version.split(" ")[0]))
@@ -173,6 +173,11 @@ def train(args_dict):
         step_vals = algorithm.update(minibatches_device)
         # --------------------------------------------------------------------------------------
         checkpoint_vals['step_time'].append(time.time() - step_start_time)
+        time_monitor = time.time() - sweep_start_time
+        if time_monitor >sweep_args.zip_output_time and sweep_args.zip_output_time>0:
+            is_time_out = True
+            break # break the training loop
+        # --------------------------------------------------------------------------------------
 
         for key, val in step_vals.items():
             checkpoint_vals[key].append(val)
@@ -220,5 +225,8 @@ def train(args_dict):
     #------------------------------------------------------------ save the model at the last step
     save_checkpoint('model.pkl')
 
-    with open(os.path.join(args.output_dir, 'done'), 'w') as f:
-        f.write('done')
+    if not is_time_out:
+        with open(os.path.join(args.output_dir, 'done'), 'w') as f:
+            f.write('done')
+
+    return is_time_out
