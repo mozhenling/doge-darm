@@ -4,7 +4,7 @@ echo '------- update git and remote --------'
 
 git add .
 
-git commit . -m 'add a timer to zip outputs'
+git commit . -m 'correct pp_weight'
 
 git push origin master
 

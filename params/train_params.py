@@ -39,13 +39,13 @@ def get_args():
     parser.add_argument('--skip_model_save', action='store_true')
     parser.add_argument('--save_model_every_checkpoint', action='store_true')
 
-    # -- sweep params for plain launcher
-    parser.add_argument('--command', choices=['r','run','c', 'clear','launch', 'delete_incomplete'], default='r')
-    parser.add_argument('--command_launcher', type=str, default='plain')
-    parser.add_argument('--datasets', nargs='+', type=str)
-    parser.add_argument('--n_trials', type=int, default=3)
-    parser.add_argument('--n_hparams', type=int, default=20)
-    parser.add_argument('--algorithms', nargs='+', type=str)
+    # # -- sweep params for plain launcher
+    # parser.add_argument('--command', choices=['r','run','c', 'clear','launch', 'delete_incomplete'], default='r')
+    # parser.add_argument('--command_launcher', type=str, default='plain')
+    # parser.add_argument('--datasets', nargs='+', type=str)
+    # parser.add_argument('--n_trials', type=int, default=3)
+    # parser.add_argument('--n_hparams', type=int, default=20)
+    # parser.add_argument('--algorithms', nargs='+', type=str)
     # --
 
     args = parser.parse_args()
