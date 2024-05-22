@@ -33,7 +33,7 @@ class DARM(Algorithm):
         self.scheduler = get_scheduler(optimizer=self.optimizer, args=self.args)
 
         self.loss_ii_weight_orignal = hparams['loss_ii_weight']
-        self.loss_pp_weight_orignal = hparams['loss_pp_weight']
+        self.loss_pp_weight_orignal = hparams['loss_pp_weight'] # may change to hparams['loss_ii_weight'] to reduce searching space
 
     def update(self, minibatches, unlabeled=None):
         # -- pool all domains of data/labels
