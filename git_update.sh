@@ -4,7 +4,7 @@ echo '------- update git and remote --------'
 
 git add .
 
-git commit . -m 'correct pp_weight'
+git commit . -m 'add more experiments'
 
 git push origin master
 
