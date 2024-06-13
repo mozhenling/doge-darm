@@ -20,12 +20,12 @@ import os
 from oututils import os_utils
 import shutil
 
-def plain_launcher(args_list, sweep_start_time, sweep_args):
+def plain_launcher(args_list, sweep_start_time, zip_output_dir, output_dir, zip_output_time):
     """Launch training via train function"""
     is_time_out = False
     for i, args in enumerate(args_list):
         print(f'About to launch job #{i+1}')
-        is_time_out = train(args, sweep_start_time, is_time_out, sweep_args)
+        is_time_out = train(args, sweep_start_time, is_time_out, zip_output_time)
         if is_time_out:
             print(f'Job #{i+1} was incomplete due to time out!')
             print(f'({len(args_list) - i} jobs incomplete in total)')
@@ -35,11 +35,11 @@ def plain_launcher(args_list, sweep_start_time, sweep_args):
 
     # os.makedirs(sweep_args.zip_output_dir, exist_ok=True)
     if is_time_out:
-        output_name = os.path.join(sweep_args.zip_output_dir, f'0-time_out_sweeps')
-        os_utils.tozip(output_name, sweep_args.output_dir)
+        output_name = os.path.join(zip_output_dir, f'0-time_out_sweeps')
+        os_utils.tozip(output_name, output_dir)
     else:
-        output_name = os.path.join(sweep_args.zip_output_dir, '0-job_out_sweeps')
-        os_utils.tozip(output_name, sweep_args.output_dir)
+        output_name = os.path.join(zip_output_dir, '0-job_out_sweeps')
+        os_utils.tozip(output_name, output_dir)
 
 def local_launcher(commands):
     """Launch commands serially on the local machine."""
@@ -100,7 +100,14 @@ class Job:
     DONE = 'Done'
 
     def __init__(self, train_args, sweep_output_dir, is_cmd_launcher = False):
-        args_str = json.dumps(train_args, sort_keys=True)
+        ################### sweep folder encoder ##################
+        identifier_keys = ['dataset', 'algorithm', 'test_envs',
+                           'holdout_fraction', 'hparams_seed',
+                           'task', 'trial_seed']
+        # seed is dependent on dataset,algorithm, test_envs, hparams_seed, trial_seed
+        sweep_folder_identifier = {key: train_args[key] for key in identifier_keys}
+        args_str = json.dumps(sweep_folder_identifier, sort_keys=True)
+        ###########################################################
         args_hash = hashlib.md5(args_str.encode('utf-8')).hexdigest()
         self.output_dir = os.path.join(sweep_output_dir, args_hash)
         self.train_args = copy.deepcopy(train_args)
@@ -138,7 +145,7 @@ class Job:
             job_info)
 
     @staticmethod
-    def launch(jobs, launcher_fn, sweep_start_time, is_cmd_launcher, sweep_args):
+    def launch(jobs, launcher_fn, is_cmd_launcher, sweep_start_time, zip_output_dir, output_dir, zip_output_time):
         print('Launching...')
         jobs = jobs.copy()
         np.random.shuffle(jobs)
@@ -150,7 +157,7 @@ class Job:
             launcher_fn(commands)
         else:
             args_list = [job.train_args for job in jobs]
-            launcher_fn(args_list, sweep_start_time, sweep_args)
+            launcher_fn(args_list, sweep_start_time, zip_output_dir, output_dir, zip_output_time)
         print(f'Tried {len(jobs)} jobs!')
 
     @staticmethod
@@ -158,7 +165,8 @@ class Job:
         print('Deleting...')
         for job in jobs:
             shutil.rmtree(job.output_dir)
-        print(f'Deleted {len(jobs)} jobs!')
+        print(f'Deleted {len(jobs)} existed jobs!')
+
 
 def all_test_env_combinations(n):
     """
@@ -171,39 +179,44 @@ def all_test_env_combinations(n):
         for j in range(i+1, n):
             yield [i, j]
 
-def make_args_list(n_trials, dataset_names, algorithms, n_hparams_from, n_hparams, steps,
-    data_dir, task, holdout_fraction, nets_base, aug_num,
-                   skip_model_save, single_test_envs, hparams):
+def make_args_list(n_trials, dataset_names, algorithms, n_hparams_from, n_hparams, avg_std, steps, checkpoint_freq,
+    data_dir, task, holdout_fraction, nets_base, aug_num, skip_model_save, sweep_test_envs, single_test_envs, hparams):
     args_list = []
-    for trial_seed in range(n_trials):
+    for trial_seed_id in range(n_trials):
         for dataset in dataset_names:
             for algorithm in algorithms:
-                if single_test_envs:
-                    all_test_envs = [
-                        [i] for i in range(datasets.num_environments(dataset))]
+                if sweep_test_envs is not None:
+                    all_test_envs = sweep_test_envs
                 else:
-                    all_test_envs = all_test_env_combinations(
-                        datasets.num_environments(dataset))
+                    if single_test_envs:
+                        all_test_envs = [
+                            [i] for i in range(datasets.num_environments(dataset))]
+                    else:
+                        all_test_envs = all_test_env_combinations(
+                            datasets.num_environments(dataset))
                 for test_envs in all_test_envs:
-                    for hparams_seed in range(n_hparams_from, n_hparams):
+                    for hparams_seed_id in range(n_hparams_from, n_hparams):
                         train_args = {}
                         train_args['dataset'] = dataset
                         train_args['algorithm'] = algorithm
                         train_args['test_envs'] = test_envs
                         train_args['holdout_fraction'] = holdout_fraction
-                        train_args['hparams_seed'] = hparams_seed
                         train_args['data_dir'] = data_dir
                         train_args['task'] = task
                         train_args['nets_base'] = nets_base
                         train_args['aug_num'] = aug_num
                         train_args['skip_model_save'] = skip_model_save
-                        train_args['trial_seed'] = trial_seed
                         train_args['n_trials'] = n_trials
-                        train_args['datasets'] = dataset_names
                         train_args['n_hparams'] = n_hparams
-                        train_args['seed'] = data_process.seed_hash(dataset, algorithm, test_envs, hparams_seed, trial_seed)
+                        train_args['avg_std'] = avg_std
+                        train_args['hparams_seed_id'] = hparams_seed_id
+                        train_args['hparams_seed'] = data_process.seed_hash(hparams_seed_id,  hparams)
+                        train_args['trial_seed'] = trial_seed_id
+                        train_args['seed'] = data_process.seed_hash(dataset, algorithm, test_envs, train_args['hparams_seed'], trial_seed_id)
                         if steps is not None:
                             train_args['steps'] = steps
+                        if checkpoint_freq is not None:
+                            train_args['checkpoint_freq']=checkpoint_freq
                         if hparams is not None:
                             train_args['hparams'] = hparams
                         args_list.append(train_args)

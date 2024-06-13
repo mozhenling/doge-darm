@@ -60,7 +60,7 @@ def print_table(table, header_text, row_labels, col_labels, colwidth=10,latex=Tr
         print("\\end{tabular}}")
         print("\\end{center}")
 
-def format_mean(data, latex):
+def format_mean(data, latex=False):
     """Given a list of datapoints, return a string describing their mean and
     standard error"""
     if len(data) == 0:

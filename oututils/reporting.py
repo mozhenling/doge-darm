@@ -7,10 +7,9 @@ import tqdm
 from oututils.query import Q
 
 def load_records(path):
+    """records are checkpoints info. of steps"""
     records = []
-    for i, subdir in tqdm.tqdm(list(enumerate(os.listdir(path))),
-                               ncols=80,
-                               leave=False):
+    for i, subdir in tqdm.tqdm(list(enumerate(os.listdir(path))),ncols=80, leave=False):
         results_path = os.path.join(path, subdir, "results.jsonl")
         try:
             with open(results_path, "r") as f:
@@ -21,18 +20,35 @@ def load_records(path):
 
     return Q(records)
 
-def get_grouped_records(records):
+def get_grouped_records(records, subalgorithm=None, args_seed_type = 'trial_seed'):
     """Group records by (trial_seed, dataset, algorithm, test_env). Because
     records can have multiple test envs, a given record may appear in more than
     one group."""
-    result = collections.defaultdict(lambda: [])
-    for r in records:
-        for test_env in r["args"]["test_envs"]:
-            group = (r["args"]["trial_seed"],
-                r["args"]["dataset"],
-                r["args"]["algorithm"],
-                test_env)
-            result[group].append(r)
-    return Q([{"trial_seed": t, "dataset": d, "algorithm": a, "test_env": e,
-        "records": Q(r)} for (t,d,a,e),r in result.items()])
+    if subalgorithm is None:
+        result = collections.defaultdict(lambda: [])
+        for r in records:
+            for test_env in r["args"]["test_envs"]:
+                # group records by specific keys
+                group = (r["args"][args_seed_type],
+                         r["args"]["dataset"],
+                         r["args"]["algorithm"],
+                         test_env)
+                result[group].append(r)
+
+        return Q([{args_seed_type: t, "dataset": d, "algorithm": a, "test_env": e,
+             "records": Q(r)} for (t,d,a,e),r in result.items()])
+    else:
+        result = collections.defaultdict(lambda: [])
+        for r in records:
+            for test_env in r["args"]["test_envs"]:
+                # group records by specific keys
+                group = (r["args"][args_seed_type],
+                         r["args"]["dataset"],
+                         r["args"]["algorithm"],
+                         r["args"]["sub_algorithm"],
+                         test_env)
+                result[group].append(r)
+
+        return Q([{args_seed_type: t, "dataset": d, "algorithm": a,'sub_algorithm':s, "test_env": e,
+                   "records": Q(r)} for (t, d, a, s, e), r in result.items()])
 

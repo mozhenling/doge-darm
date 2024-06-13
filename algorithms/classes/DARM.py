@@ -33,13 +33,13 @@ class DARM(Algorithm):
         self.scheduler = get_scheduler(optimizer=self.optimizer, args=self.args)
 
         self.loss_ii_weight_orignal = hparams['loss_ii_weight']
-        self.loss_pp_weight_orignal = hparams['loss_pp_weight'] # may change to hparams['loss_ii_weight'] to reduce searching space
+        self.loss_pp_weight_orignal = hparams['loss_pp_weight']
 
     def update(self, minibatches, unlabeled=None):
         # -- pool all domains of data/labels
         x = torch.cat([x for x, y in minibatches])
         y = torch.cat([y for x, y in minibatches])
-        y_domain = torch.cat([torch.full((x.shape[0],), i, ) for i, (x, y) in enumerate(minibatches)])
+        y_domain = torch.cat([torch.full((x.shape[0],), i ) for i, (x, y) in enumerate(minibatches)])
 
         self.hparams['loss_ii_weight'] = (self.loss_ii_weight_orignal if self.update_count
                                                             >= self.hparams['warm_up_ii'] else 1.0)

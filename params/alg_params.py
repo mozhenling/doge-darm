@@ -14,6 +14,9 @@ def _hparams(algorithm, dataset, random_seed, args):
     """
     # we use the same small  hyperparameter search as the SMALL_DATASETS of DomainBed
     SMALL_DATASETS = [
+        'UO_Bearing',
+        'PU_Bearing',
+
         'CU_Actuator',
         'CWRU_Bearing',
 
@@ -70,16 +73,17 @@ def _hparams(algorithm, dataset, random_seed, args):
     # -----------------------------------------------------------------------
     # --------------------- DARM
     elif algorithm in ['DARM', 'DARM_ip', 'DARM_ippp', 'DARM_piii']:
+
         _hparam('dist_criterion', 'l2_dist', lambda r: r.choice(['l2_dist','dot_dist']))
         _hparam('loss_ip_weight', 1.0, lambda r: 1.0)
         _hparam('pair_reserve_rate', 0., lambda r: r.uniform(0.2, 0.8))
         _hparam('warm_up_ii', int(args.steps * 0.1),
                 lambda r: int(args.steps * r.uniform(0.1, 0.9)))
-        _hparam('loss_ii_weight', 1.0, lambda r: 10 ** r.uniform(-1, 5))
         _hparam('warm_up_pp', int(args.steps * 0.1),
                 lambda r: int(args.steps * r.uniform(0.1, 0.9)))
+        # (-1, 5)s are just the initial weights, please adjust them using a grid search first
+        _hparam('loss_ii_weight', 1.0, lambda r: 10 ** r.uniform(-1, 5))
         _hparam('loss_pp_weight', 1.0, lambda r: 10 ** r.uniform(-1, 5))
-
 
     # -- Mixup
     elif algorithm in ["Mixup"]:
@@ -144,20 +148,6 @@ def _hparams(algorithm, dataset, random_seed, args):
     else:
         _hparam('batch_size', 32, lambda r: int(2 ** r.uniform(3, 5.5)))
 
-    if algorithm in ['DANN', 'CDANN'] and dataset in SMALL_DATASETS:
-        _hparam('lr_g', 1e-3, lambda r: 10 ** r.uniform(-4.5, -2.5))
-    elif algorithm in ['DANN', 'CDANN']:
-        _hparam('lr_g', 5e-5, lambda r: 10 ** r.uniform(-5, -3.5))
-
-    if algorithm in ['DANN', 'CDANN'] and dataset in SMALL_DATASETS:
-        _hparam('lr_d', 1e-3, lambda r: 10 ** r.uniform(-4.5, -2.5))
-    elif algorithm in ['DANN', 'CDANN']:
-        _hparam('lr_d', 5e-5, lambda r: 10 ** r.uniform(-5, -3.5))
-
-    if algorithm in ['DANN', 'CDANN'] and dataset in SMALL_DATASETS:
-        _hparam('weight_decay_g', 0., lambda r: 0.)
-    elif algorithm in ['DANN', 'CDANN']:
-        _hparam('weight_decay_g', 0., lambda r: 10 ** r.uniform(-6, -2))
 
     return hparams
 
@@ -170,7 +160,22 @@ def default_hparams(args):
 
 
 def random_hparams(args):
+    """
+    Average on standard deviation calculations on results of hparams:
+    1 Domainbed (take average/std across experiments):
+        Standard error bars: While some DG literature reports error bars across seeds, randomness arising
+        from model selection is often ignored. This is acceptable if the goal is best-versus-best comparison,
+        but prohibits analyses concerning the model selection process itself. Instead, we repeat our entire
+        study three times, making every random choice anew: hyperparameters, weight initializations, and
+        dataset splits. Every number we report is a mean (and its standard error) over these repetitions
+    2 Take average/std across trial_seeds for each set of hparams
+    """
     algorithm = args.algorithm
     dataset = args.dataset
-    random_seed = seed_hash(args.hparams_seed, args.trial_seed)
+    if args.avg_std in ['e', 'experiments']:
+        random_seed = seed_hash(args.hparams_seed, args.trial_seed)
+    elif args.avg_std in ['t', 'trials']:
+        random_seed = seed_hash(args.hparams_seed)
+    else:
+        raise ValueError('args.avg_std is not matched!')
     return {a: c for a, (b, c) in _hparams(algorithm, dataset, random_seed, args).items()}

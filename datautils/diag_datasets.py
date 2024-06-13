@@ -11,6 +11,10 @@ import pandas as pd
 from datautils.seq_process import sig_segmentation, dataset_transform
 
 DATASETS = [
+
+    'UO_Bearing',
+    'PU_Bearing',
+
     'CU_Actuator',
     'CWRU_Bearing',
 
@@ -46,6 +50,80 @@ class MultipleDomainDataset:
 
     def __len__(self):
         return len(self.datasets)
+
+
+class PU_Bearing(MultipleDomainDataset):
+    ENVIRONMENTS = ['N09_M07_F10', 'N15_M01_F10', 'N15_M07_F04']
+
+    def __init__(self, args, hparams):
+        super().__init__()
+
+        if args.data_dir is None:
+            raise ValueError('Data directory not specified!')
+
+        # -- sample points
+        self.seg_len = 1000
+        self.instance_size = 240 # per class
+        self.sig_type = 'vibration'
+        self.obj_type = 'bearing'
+
+        self.class_name_list = ['H',  #0
+                                'I',  #1
+                                'O'   #2
+                                    ] #3
+
+        self.class_list = [i for i in range(len(self.class_name_list))]
+        self.environments = ['N09_M07_F10', 'N15_M01_F10', 'N15_M07_F04']
+        # -----------------------------------------------------------
+        self.input_shape = (1, self.seg_len)
+        self.num_classes = len(self.class_list)
+        self.datasets = []
+
+        # -----------------------------------------------------------
+        for env_id, env_name in enumerate(self.environments):
+            aug_num = 0 if env_id in args.test_envs else args.aug_num
+            file_path = os.path.join(args.data_dir,  args.dataset, env_name+'.mat')
+            data_dict = loadmat(file_path)
+            data, labels = data_dict['data'], data_dict['labels'].squeeze()
+            self.datasets.append(dataset_transform(data, labels, self.input_shape, args.device,
+                                                   aug_num, args.trial_seed))
+
+class UO_Bearing(MultipleDomainDataset):
+    ENVIRONMENTS = ['0-3s', '3-6s', '6-9s']
+
+    def __init__(self, args, hparams):
+        super().__init__()
+
+        if args.data_dir is None:
+            raise ValueError('Data directory not specified!')
+
+        # -- sample points
+        self.seg_len = 1024
+        self.instance_size = 580 # per class
+        self.sig_type = 'vibration'
+        self.obj_type = 'bearing'
+
+        self.class_name_list = ['H',#0
+                                'I',  #1
+                                'O'  #2
+                                    ] #3
+
+        self.class_list = [i for i in range(len(self.class_name_list))]
+        self.environments = ['0-3s', '3-6s', '6-9s']
+        # -----------------------------------------------------------
+        self.input_shape = (1, self.seg_len)
+        self.num_classes = len(self.class_list)
+        self.datasets = []
+
+        # -----------------------------------------------------------
+        for env_id, env_name in enumerate(self.environments):
+            aug_num = 0 if env_id in args.test_envs else args.aug_num
+            file_path = os.path.join(args.data_dir,  args.dataset, self.obj_type+'_'+self.sig_type+
+                                     '_speed_'+env_name+'_3cls.mat')
+            data_dict = loadmat(file_path)
+            data, labels = data_dict['data'], data_dict['labels'].squeeze()
+            self.datasets.append(dataset_transform(data, labels, self.input_shape, args.device,
+                                                   aug_num, args.trial_seed))
 
 class CU_Actuator(MultipleDomainDataset):
     ENVIRONMENTS = ['20kg', '40kg', 'neg40kg']

@@ -27,7 +27,7 @@ class SelectionMethod:
     def hparams_accs(self, records):
         """
         Given all records from a single (dataset, algorithm, sub_algorithm, test env) pair,
-        return a sorted list of (run_acc, records) tuples.
+        return a sorted list of (run_acc, records) tuples based on val_acc.
         """
         return (records.group('args.hparams_seed')
             .map(lambda _, run_records:
@@ -36,7 +36,7 @@ class SelectionMethod:
                     run_records
                 )
             ).filter(lambda x: x[0] is not None)
-            .sorted(key=lambda x: x[0]['val_acc'])[::-1]
+            .sorted(key=lambda x: x[0]['val_acc'])[::-1] # descending order
         )
 
     @classmethod

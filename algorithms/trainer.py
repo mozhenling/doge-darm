@@ -18,7 +18,18 @@ from params.seedutils import seed_everything_update
 #------------------------------------------------------------ Main
 ########################################################################################################################
 #------------------------------------------------------------ re-set imporatant params for each algorithm (for runs of no commind lines)
-def train(args_dict, sweep_start_time, is_time_out, sweep_args):
+def train(args_dict, sweep_start_time= time.time(), is_time_out=False, zip_output_time=None, start_step = 0, algorithm_dict = None, t_sne=False):
+    """
+    # If we ever want to implement checkpointing, just persist these values
+    # every once in a while, and then load them from disk here.
+    start_step = 0
+    algorithm_dict = None
+    """
+
+    # -- for visualization
+    test_xy_dict = {'feature':None, 'label':None}
+    train_xy_dict = {'feature':None, 'label':None}
+
     # ------------------------------------------------------------ Versions of your packages
     print("Versions:")
     print("\tPython: {}".format(sys.version.split(" ")[0]))
@@ -40,24 +51,20 @@ def train(args_dict, sweep_start_time, is_time_out, sweep_args):
         device = "cpu"
 
     args.device = device
-    print('Args:')
 
+    print('Args:')
     vars(args).update(args_dict)
     for k, v in sorted(vars(args).items()):
         print('\t{}: {}'.format(k, v))
 
-    # #------------------------------------------------------------ for checkpointing
-    # If we ever want to implement checkpointing, just persist these values
-    # every once in a while, and then load them from disk here.
-    start_step = 0
-    algorithm_dict = None
+
     #------------------------------------------------------------ save outputs and errors into the files
     os.makedirs(args.output_dir, exist_ok=True)
     sys.stdout = os_utils.Tee(os.path.join(args.output_dir, 'out.txt'))
     sys.stderr = os_utils.Tee(os.path.join(args.output_dir, 'err.txt'))
 
     #------------------------------------------------------------ Hyper parameters
-    if args.hparams_seed == 0:
+    if args.hparams_seed_id == 0:
         hparams = default_hparams(args)
     else:
         hparams = random_hparams(args)
@@ -150,6 +157,24 @@ def train(args_dict, sweep_start_time, is_time_out, sweep_args):
     n_steps = args.steps if args.steps is not None else hparams['steps']
 
     checkpoint_freq = args.checkpoint_freq or dataset.CHECKPOINT_FREQ
+
+    # ------------------------------------------------------------ for T-SNE visualization
+    if t_sne:
+        # -- training domains
+        minibatches_device_train = [(x.to(device), y.to(device)) for x, y in next(train_minibatches_iterator)]
+        x_train, y_train = minibatches_device_train[0] # use one domain as an example
+        train_xy_dict['feature'] = algorithm.featurizer(x_train).cpu().detach().numpy()
+        train_xy_dict['label'] = y_train.cpu().detach().numpy()
+        # -- test domains
+        minibatches_device_test = [(x.to(device), y.to(device)) for x, y in next(zip(*eval_loaders))]
+        x_test,y_test = minibatches_device_test[0]
+
+        test_xy_dict['feature'] = algorithm.featurizer(x_test).cpu().detach().numpy()
+        test_xy_dict['label'] = y_test.cpu().detach().numpy()
+
+        return train_xy_dict, test_xy_dict
+
+
     #------------------------------------------------------------ prepare save
     def save_checkpoint(filename):
         if args.skip_model_save:
@@ -174,9 +199,10 @@ def train(args_dict, sweep_start_time, is_time_out, sweep_args):
         # --------------------------------------------------------------------------------------
         checkpoint_vals['step_time'].append(time.time() - step_start_time)
         time_monitor = time.time() - sweep_start_time
-        if time_monitor >sweep_args.zip_output_time and sweep_args.zip_output_time>0:
-            is_time_out = True
-            break # break the training loop
+        if zip_output_time is not None:
+            if time_monitor >zip_output_time:
+                is_time_out = True
+                break # break the training loop
         # --------------------------------------------------------------------------------------
 
         for key, val in step_vals.items():
