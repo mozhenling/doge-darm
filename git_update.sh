@@ -4,7 +4,7 @@ echo '------- update git and remote --------'
 
 git add .
 
-git commit . -m 'add further experiments'
+git commit . -m 'paper accepted by IOTJ'
 
 git push origin master
 

@@ -2,7 +2,7 @@
 
 The repository contains the code of the manuscript entitled
 _"Distance Aware Risk Minimization for Domain Generalization in Machine Fault Diagnosis"_, 
-which are currently under a peer review process.
+which has been accepted for publication in a future issue of IEEE Internet of Things Journal [[Preprint](https://www.researchgate.net/publication/382917575_Distance_Aware_Risk_Minimization_for_Domain_Generalization_in_Machine_Fault_Diagnosis#fullTextFileContent)].
 
 ## Acknowledgement 
 We herein acknowledge the authors of the [DomainBed](https://github.com/facebookresearch/DomainBed) 
